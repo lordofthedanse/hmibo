@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bundle install:*)",
+      "Bash(rake spec:*)",
+      "Bash(rake rubocop:*)",
+      "Bash(bundle exec:*)",
+      "Bash(rake build)",
+      "Bash(rspec:*)",
+      "Bash(gem build:*)"
+    ],
+    "deny": []
+  }
+}

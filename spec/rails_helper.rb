@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-require "bundler/setup"
+require 'bundler/setup'
 
-ENV["RAILS_ENV"] = "test"
+ENV['RAILS_ENV'] = 'test'
 
-require "rails"
-require "rails/all"
-require "action_controller"
-require "rspec"
+require 'rails'
+require 'rails/all'
+require 'action_controller'
+require 'rspec'
 
 module TestApp
   class Application < Rails::Application
@@ -17,17 +17,17 @@ module TestApp
     config.consider_all_requests_local = true
     config.active_support.deprecation = :log
     config.log_level = :fatal
-    config.secret_key_base = "test"
+    config.secret_key_base = 'test'
     config.hosts.clear
-    
+
     # In-memory database
-    config.active_record.database_url = "sqlite3::memory:"
+    config.active_record.database_url = 'sqlite3::memory:'
   end
 end
 
 Rails.application.initialize!
 
-require "hmibo"
+require 'hmibo'
 
 RSpec.configure do |config|
   config.expect_with :rspec do |expectations|
@@ -40,11 +40,11 @@ RSpec.configure do |config|
 
   config.shared_context_metadata_behavior = :apply_to_host_groups
   config.filter_run_when_matching :focus
-  config.example_status_persistence_file_path = "spec/examples.txt"
+  config.example_status_persistence_file_path = 'spec/examples.txt'
   config.disable_monkey_patching!
   config.warnings = true
 
-  config.default_formatter = "doc" if config.files_to_run.one?
+  config.default_formatter = 'doc' if config.files_to_run.one?
   config.profile_examples = 10
   config.order = :random
 

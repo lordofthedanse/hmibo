@@ -33,7 +33,7 @@ module Hmibo
 
     # Override this method in subclasses to implement business logic
     def perform
-      raise NotImplementedError, "Subclasses must implement #perform"
+      raise NotImplementedError, 'Subclasses must implement #perform'
     end
 
     # Handle errors that occur during execution
@@ -45,10 +45,10 @@ module Hmibo
     # Add an error to the errors collection
     def add_error(message, code: 422, id: nil)
       error = if message.is_a?(Hash)
-        message
-      else
-        { message: message, code: code, id: id }
-      end
+                message
+              else
+                { message: message, code: code, id: id }
+              end
       @errors << error
       self
     end
@@ -58,6 +58,5 @@ module Hmibo
       provided_context = context || "in #{self.class.name}"
       LoggerHead.new(error, provided_context: provided_context).call
     end
-
   end
 end

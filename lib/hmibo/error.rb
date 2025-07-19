@@ -27,7 +27,7 @@ module Hmibo
 
     def self.from_active_record(record, id: nil)
       errors = []
-      
+
       record.errors.each do |error|
         errors << new(
           error.full_message,
@@ -36,7 +36,7 @@ module Hmibo
           field: error.attribute
         )
       end
-      
+
       errors
     end
 
@@ -44,19 +44,19 @@ module Hmibo
       new(message, code: 422, field: field)
     end
 
-    def self.not_found(message = "Record not found")
+    def self.not_found(message = 'Record not found')
       new(message, code: 404)
     end
 
-    def self.unauthorized(message = "Unauthorized")
+    def self.unauthorized(message = 'Unauthorized')
       new(message, code: 401)
     end
 
-    def self.forbidden(message = "Forbidden")
+    def self.forbidden(message = 'Forbidden')
       new(message, code: 403)
     end
 
-    def self.server_error(message = "Internal server error")
+    def self.server_error(message = 'Internal server error')
       new(message, code: 500)
     end
   end

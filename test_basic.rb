@@ -15,32 +15,32 @@ class TestService < Hmibo::Base
   private
 
   def perform
-    return add_error("Name is required") if @name.nil? || @name.empty?
-    
+    return add_error('Name is required') if @name.nil? || @name.empty?
+
     @data = { name: @name }
     self
   end
 end
 
-puts "Testing Hmibo gem..."
+puts 'Testing Hmibo gem...'
 
 # Test successful service
-service = TestService.call(name: "John")
+service = TestService.call(name: 'John')
 puts "Success test: #{!service.errors?} (#{service.data})"
 
 # Test error case
-service = TestService.call(name: "")
+service = TestService.call(name: '')
 puts "Error test: #{service.errors?} (#{service.errors.first})"
 
 # Test BulkCreation
 class MockRecord
   attr_reader :errors
-  
+
   def initialize(params)
     @params = params
     @errors = []
   end
-  
+
   def save
     if @params[:name] && !@params[:name].empty?
       true
@@ -49,23 +49,19 @@ class MockRecord
       false
     end
   end
-  
-  def errors
-    @errors
-  end
-  
+
   class << self
     def full_messages
       self
     end
-    
-    def join(separator)
+
+    def join(_separator)
       "Name can't be blank"
     end
   end
 end
 
-bulk = Hmibo::BulkCreation.call([{name: "John"}, {name: ""}], MockRecord)
+bulk = Hmibo::BulkCreation.call([{ name: 'John' }, { name: '' }], MockRecord)
 puts "Bulk creation test: #{bulk.errors?} (#{bulk.errors.length} errors)"
 
-puts "All tests completed!"
+puts 'All tests completed!'

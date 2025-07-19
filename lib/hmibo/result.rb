@@ -42,7 +42,7 @@ module Hmibo
     end
 
     # Factory methods for creating results
-    def self.success(message = "Success", data = nil)
+    def self.success(message = 'Success', data = nil)
       new(true, message, data, [])
     end
 
