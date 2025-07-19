@@ -8,8 +8,8 @@ Gem::Specification.new do |spec|
   spec.authors = ["Daniel Brown"]
   spec.email = ["daniel@wendcare.com"]
 
-  spec.summary = "Service object conventions and patterns for Ruby applications"
-  spec.description = "Hmibo (How May I Be Of service) provides a consistent pattern for service objects with error handling, validation, and result objects"
+  spec.summary = "Simple service object patterns for Ruby applications"
+  spec.description = "Hmibo (How May I Be Of service) provides lightweight, dependency-free service object patterns inspired by DetectionTek conventions"
   spec.homepage = "https://github.com/wendcare/hmibo"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.0.0"
@@ -31,8 +31,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   # Dependencies
-  spec.add_dependency "activemodel", ">= 6.0"
-  spec.add_dependency "activesupport", ">= 6.0"
+  spec.add_dependency "logger_head", "~> 0.1.0"
 
   # Development dependencies
   spec.add_development_dependency "rspec", "~> 3.0"

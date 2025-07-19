@@ -2,6 +2,7 @@
 
 module Hmibo
   # Service for bulk creation of records with error handling
+  # Follows DetectionTek patterns for simple, consistent service objects
   class BulkCreation < Base
     def initialize(params, klass)
       @params = params
@@ -9,17 +10,13 @@ module Hmibo
       super()
     end
 
-    def validate_inputs
-      add_error("Params cannot be blank") if @params.blank?
-      add_error("Class cannot be blank") if @klass.blank?
-      !has_errors?
-    end
-
     private
 
     attr_reader :params, :klass
 
     def perform
+      return add_validation_errors if invalid_inputs?
+      
       created_records = []
       
       @params.each do |param_set|
@@ -32,20 +29,30 @@ module Hmibo
         end
       end
       
-      if has_errors?
-        failure_result("Some records failed to create", @service_errors)
-      else
-        success_result("All records created successfully", created_records)
-      end
+      @data = created_records
+      self
+    end
+
+    def invalid_inputs?
+      return true if @params.nil? || (defined?(@params.blank?) && @params.blank?) || (@params.respond_to?(:empty?) && @params.empty?)
+      return true if @klass.nil?
+      
+      false
+    end
+
+    def add_validation_errors
+      add_error("Params cannot be blank") if @params.nil? || (defined?(@params.blank?) && @params.blank?) || (@params.respond_to?(:empty?) && @params.empty?)
+      add_error("Class cannot be blank") if @klass.nil?
     end
 
     def add_error_for_record(record, client_side_id)
-      error = Error.new(
-        record.errors.full_messages.to_sentence,
-        code: 422,
-        id: client_side_id
-      )
-      @service_errors << error
+      if record.errors.respond_to?(:full_messages)
+        record.errors.full_messages.each do |message|
+          add_error(message, code: 422, id: client_side_id)
+        end
+      else
+        add_error("Record validation failed", code: 422, id: client_side_id)
+      end
     end
   end
 end

@@ -2,33 +2,31 @@
 
 module Hmibo
   # Base service class that provides common patterns for service objects
+  # Inspired by DetectionTek patterns - simple, dependency-free Ruby classes
   class Base
-    include ActiveModel::Model
-    include ActiveModel::Attributes
-    include ActiveModel::Validations
-    include ActiveModel::Validations::Callbacks
+    attr_accessor :errors, :data
 
-    attr_reader :result
-
-    def initialize(attributes = {})
-      @service_errors = []
-      @result = nil
-      super(attributes)
+    def initialize(*args)
+      @errors = []
+      @data = nil
+      setup(*args) if respond_to?(:setup, true)
     end
 
     # Main entry point for service execution
     def call
-      validate_inputs
-      return failure_result("Invalid parameters", validation_error_messages) unless valid?
-
       perform
     rescue StandardError => e
       handle_error(e)
+      self
     end
 
     # Class method for convenient service execution
-    def self.call(*args)
-      new(*args).call
+    def self.call(*args, **kwargs)
+      new(*args, **kwargs).call
+    end
+
+    def errors?
+      !@errors.empty?
     end
 
     private
@@ -38,64 +36,28 @@ module Hmibo
       raise NotImplementedError, "Subclasses must implement #perform"
     end
 
-    # Validate inputs before execution
-    def validate_inputs
-      # Override in subclasses for custom validation
-      valid?
-    end
-
     # Handle errors that occur during execution
     def handle_error(error)
-      Rails.logger.error("#{self.class.name} error: #{error.message}") if defined?(Rails)
-      @service_errors << error.message
-      failure_result(error.message, [error.message])
-    end
-
-    # Create a success result
-    def success_result(message = "Success", data = nil)
-      @result = Result.success(message, data)
-    end
-
-    # Create a failure result
-    def failure_result(message, errors = [])
-      @service_errors.concat(Array(errors))
-      @result = Result.failure(message, @service_errors)
-    end
-
-    # Check if the service has any errors
-    def has_errors?
-      @service_errors.present?
-    end
-    public :has_errors?
-
-    # Get validation errors as an array
-    def validation_error_messages
-      return [] unless errors.respond_to?(:full_messages)
-      
-      errors.full_messages
-    end
-
-    # ActiveModel errors accessor
-    def errors_accessor
-      @errors_accessor ||= ActiveModel::Errors.new(self)
+      log_error(error, context: "#{self.class.name} execution")
+      @errors << error.message
     end
 
     # Add an error to the errors collection
-    def add_error(message)
-      @service_errors << message
+    def add_error(message, code: 422, id: nil)
+      error = if message.is_a?(Hash)
+        message
+      else
+        { message: message, code: code, id: id }
+      end
+      @errors << error
+      self
     end
 
-    # Clear all errors
-    def clear_errors
-      @service_errors.clear
+    # Log error using LoggerHead for structured logging with context
+    def log_error(error, context: nil)
+      provided_context = context || "in #{self.class.name}"
+      LoggerHead.new(error, provided_context: provided_context).call
     end
 
-    # Raise an error if there are any errors in the collection
-    def raise_if_errors
-      return if @service_errors.blank?
-
-      error_message = @service_errors.join(", ")
-      raise ServiceError, error_message
-    end
   end
 end

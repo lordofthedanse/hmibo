@@ -2,16 +2,16 @@
 
 **How May I Be Of service!** 
 
-Hmibo is a Ruby gem that provides consistent patterns and conventions for service objects. It offers a structured approach to handling business logic, error management, and result objects in your Rails applications.
+Hmibo is a lightweight Ruby gem that provides simple, consistent patterns for service objects. Inspired by personal patterns, it offers structured error handling and logging for business logic in your Rails applications.
 
 ## Features
 
-- **Base Service Class**: Consistent interface for all service objects
-- **Result Objects**: Structured success/failure results with data and errors
-- **Error Handling**: Standardized error collection and reporting
-- **Validation**: Built-in ActiveModel validation support
-- **Bulk Operations**: Specialized service for bulk record creation
-- **Concerns**: Reusable modules for common functionality (geocoding, notifications)
+- **Simple Base Service Class**: Clean pattern following personal conventions
+- **Structured Error Logging**: Integrated with LoggerHead for contextual error logging
+- **Consistent Error Handling**: Structured error collection with flexible formats
+- **Bulk Operations**: Specialized service for bulk record creation with individual error tracking
+- **Rails Testing Helpers**: RSpec helpers for easy service testing
+- **Minimal Dependencies**: Uses LoggerHead for enhanced error logging (works great with Rails 7.1+)
 
 ## Installation
 
@@ -33,33 +33,41 @@ $ bundle install
 
 ```ruby
 class CreateUserService < Hmibo::Base
-  attribute :name, :string
-  attribute :email, :string
-  attribute :role, :string, default: 'user'
-
-  validates :name, presence: true
-  validates :email, presence: true, format: { with: URI::MailTo::EMAIL_REGEXP }
+  def initialize(name:, email:, role: 'user')
+    @name = name
+    @email = email
+    @role = role
+    super()
+  end
 
   private
 
+  attr_reader :name, :email, :role
+
   def perform
-    user = User.create(name: name, email: email, role: role)
+    add_error("Name is required") if name.blank?
+    add_error("Email is required") if email.blank?
+    add_error("Email format is invalid") unless valid_email?
     
-    if user.persisted?
-      success_result("User created successfully", user)
-    else
-      failure_result("Failed to create user", user.errors.full_messages)
-    end
+    return self if errors?
+
+    user = User.create!(name: name, email: email, role: role)
+    @data = user
+    self
+  end
+
+  def valid_email?
+    email.match?(/\A[^@\s]+@[^@\s]+\z/)
   end
 end
 
 # Usage
 result = CreateUserService.call(name: "John Doe", email: "john@example.com")
 
-if result.success?
-  puts "User created: #{result.data.name}"
+if result.errors?
+  puts "Errors: #{result.errors.map { |e| e[:message] }.join(', ')}"
 else
-  puts "Errors: #{result.errors.join(', ')}"
+  puts "User created: #{result.data.name}"
 end
 ```
 
@@ -75,58 +83,30 @@ params = [
 
 result = Hmibo::BulkCreation.call(params, User)
 
-if result.success?
-  puts "All users created successfully"
-else
+if result.errors?
   result.errors.each do |error|
-    puts "Error for #{error.id}: #{error.message}"
+    puts "Error for #{error[:id]}: #{error[:message]}"
   end
+else
+  puts "All #{result.data.length} users created successfully"
 end
 ```
 
-### Using Concerns
+## Service Response
 
-```ruby
-class FindNearbyLocationsService < Hmibo::Base
-  include Hmibo::Concerns::Geocoding
-  
-  attribute :user
-
-  validates :user, presence: true
-
-  private
-
-  def perform
-    check_for_coordinates(user)
-    raise_if_geocoding_errors
-    
-    locations = Location.near([user.latitude, user.longitude], 50)
-    success_result("Found #{locations.count} locations", locations)
-  rescue Hmibo::GeocodingError => e
-    failure_result("Location service unavailable", [e.message])
-  end
-end
-```
-
-## Result Objects
-
-Every service returns a `Hmibo::Result` object with the following interface:
+Every service returns itself with the following interface:
 
 ```ruby
 result = SomeService.call(params)
 
-result.success?     # => true/false
-result.failure?     # => true/false
-result.message      # => String message
-result.data         # => Any data returned by the service
-result.errors       # => Array of error messages
-result.to_h         # => Hash representation
-result.to_json      # => JSON representation
+result.errors?      # => true/false if there are errors
+result.data         # => Any data set by the service
+result.errors       # => Array of error hashes: [{message: "...", code: 422, id: nil}]
 ```
 
 ## Error Handling
 
-Services provide structured error handling:
+Services provide structured error handling with automatic logging:
 
 ```ruby
 class ExampleService < Hmibo::Base
@@ -136,44 +116,62 @@ class ExampleService < Hmibo::Base
     # Add individual errors
     add_error("Something went wrong")
     
-    # Check for errors
-    if errors?
-      failure_result("Operation failed", errors)
-    else
-      success_result("Operation completed")
-    end
+    # Errors are automatically logged with context using LoggerHead
+    return self if errors?
+
+    @data = { success: true }
+    self
   end
 end
 ```
 
-## Validation
+### Automatic Error Logging
 
-Services inherit from `ActiveModel::Model` and support all ActiveModel validations:
+Hmibo integrates with [LoggerHead](https://github.com/lordofthedanse/logger_head) to provide structured error logging with context:
 
 ```ruby
-class ValidatedService < Hmibo::Base
-  attribute :email, :string
-  attribute :age, :integer
-  
-  validates :email, presence: true, format: { with: URI::MailTo::EMAIL_REGEXP }
-  validates :age, numericality: { greater_than: 0, less_than: 120 }
-  
-  private
-  
+class CreateUserService < Hmibo::Base
   def perform
-    # This will only be called if validations pass
-    success_result("Valid data received")
+    # Any unhandled exceptions are automatically logged with context
+    raise StandardError, "Database connection failed"
+  end
+end
+
+result = CreateUserService.call
+# Automatically logs:
+# ERROR -- : There was an error in CreateUserService execution: Database connection failed
+# ERROR -- : /path/to/backtrace...
+```
+
+### Custom Error Context
+
+You can provide custom context for error logging:
+
+```ruby
+class PaymentService < Hmibo::Base
+  private
+
+  def perform
+    process_payment
+  rescue => error
+    log_error(error, context: "processing payment for user #{user_id}")
+    add_error("Payment processing failed")
+    self
   end
 end
 ```
 
 ## Exception Classes
 
-Hmibo provides custom exception classes for different scenarios:
+Hmibo provides custom exception classes:
 
 - `Hmibo::ServiceError` - Base service error
-- `Hmibo::ValidationError` - Validation-related errors
-- `Hmibo::GeocodingError` - Location/geocoding errors
+
+## Dependencies
+
+Hmibo has one very lightweight dependency:
+
+- [LoggerHead](https://github.com/lordofthedanse/logger_head) - Structured error logging with context
 
 ## Development
 
